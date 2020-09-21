@@ -1,0 +1,57 @@
+---
+title: "Class enrollment Data"
+author: "Joe Tudor"
+date: "18 Sep 2020"
+output: html_notebook
+---
+
+Prepare workspace:
+
+## Load packages
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(skimr)
+library(summarytools)
+```
+
+## Read the data
+
+```{r}
+dfa= read_excel("CU_ACAD_DEPT_ENRL.xlsx") %>%
+clean_names()
+```
+
+```{r}
+skim(dfa)
+```
+```{r}
+C=dfa %>% group_by(subject) %>% skim()
+```
+
+
+
+
+```{r}
+dfa %>% dfSummary()
+```
+
+
+```{r }
+spring19 <- dfa %>% filter(term2=="Spring 2019") %>% dfSummary() %>% view()
+skim(spring19)
+```
+
+
+```{r }
+dfa %>% dfSummary() %>% view()
+```
+
+
+```{r message=FALSE, warning=FALSE, results='asis'}
+print(dfSummary(dfa, graph.magnif = 0.75), method = 'render')
+```
+
+
