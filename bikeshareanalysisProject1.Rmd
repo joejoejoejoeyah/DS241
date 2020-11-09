@@ -1,0 +1,159 @@
+---
+title: "bike Share Analysis"
+author: "Joe Tudor"
+date: "15 Oct 2020"
+output: html_notebook
+---
+
+This analysis is to better understand the bike share program data in Washington, D.C. and discover if there are relations that we can find to predict ridership.
+
+
+Prepare workspace:
+
+## Load packages
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(skimr)
+library(summarytools)
+library(lubridate)
+```
+
+## Read and clean the data
+Loading the data
+```{r}
+dfa= read_excel("bikesharedata.xlsx", sheet = 2) %>%
+clean_names()
+```
+Skimming the data for a rough look and the data set size, variables, and datatypes.
+```{r}
+skim(dfa)
+```
+
+getting rid of the unneeded ride_id just to unclutter the data a bit, also removes trips with a negative trip duration value.
+```{r}
+dfb = dfa %>% select(-ride_id) %>% filter(duration>0) 
+```
+plots the data with respect to duration and start time on a scatterplot.
+```{r}
+dfb %>% filter(mday(started_at)==3,duration<60) %>% ggplot(aes(x=started_at,y=duration))+
+  geom_point(alpha=.1)+
+  ggtitle("Trip duration vs start time (August 3)")
+```
+
+
+
+
+removing the observations that have an observation too high or negative that would indicate bad data
+```{r}
+dfc = dfb %>% filter(duration>0,duration<1440, )
+```
+
+plotting the data in a histogram to visualize the ride durations
+```{r}
+dfc %>% filter(duration<300) %>% ggplot(aes(duration)) + geom_histogram(binwidth = 1)
+```
+
+```{r}
+dfsorted= dfc %>% dplyr::arrange(duration)
+```
+breaking down the duration histogram by weekdays
+```{r}
+dfsorted %>% filter(duration<300) %>% ggplot(aes(x = duration)) + geom_histogram(binwidth = 1) + facet_wrap(~weekday)
+```
+```{r}
+dfsorted %>% filter(mday(started_at)==3,duration<60) %>% ggplot(aes(x=started_at,y=duration))+
+  geom_point(alpha=.1)+
+  ggtitle("Trip duration vs start time (August 3)")
+```
+How many bikes are being used at any given time of day?
+To solve this problem we must look at the start and end times. First we slice the dataset to take a sample of 100.
+```{r}
+dfe=dfsorted %>% filter(mday(started_at)==3) %>% slice_sample(n=100)
+```
+
+```{r}
+dfe %>% select(start=started_at,end=ended_at)
+```
+We pivot the data set so that each start and end time is recorded in the table as an observation in a sequence. 
+```{r}
+dfe %>% select(start=started_at,end=ended_at) %>%
+  pivot_longer(start:end) 
+```
+```{r}
+dfe %>% select(start=started_at,end=ended_at) %>%
+  pivot_longer(start:end, names_to="type",values_to="t") %>% arrange(t)
+```
+After adjusting the names of the new column variables we create a new column to increment the number of bikes at a given time. Each start time will produce an increment of 1 while each end time will produce an increment of -1 since the rider is no longer using the bike and can be removed from the current cumulative total.
+```{r}
+dfe %>% select(start=started_at,end=ended_at) %>%
+  pivot_longer(start:end, names_to="type",values_to="t") %>% arrange(t) %>%
+  mutate(increment=case_when(
+   type=="start"~1,
+   type=="end" ~ -1
+  )) 
+```
+We now simply create a column to represent the cumulative total that reflects the number of riders at any given time from this sample.
+```{r}
+dfe %>% select(start=started_at,end=ended_at) %>%
+  pivot_longer(start:end, names_to="type",values_to="t") %>% arrange(t) %>%
+  mutate(increment=case_when(
+   type=="start"~1,
+   type=="end" ~ -1
+  )) %>%
+  mutate(riders=cumsum(increment))
+```
+Next we look at the ridership comparing the docked vs electric bike as well as the ridership with respect to each day of the week.
+```{r}
+dfb %>% 
+  filter(month(started_at)==8,month(ended_at)==8) %>%
+ select(rideable_type,start=started_at,end=ended_at) %>%
+  pivot_longer(start:end, names_to="type",values_to="t") %>% arrange(t) %>%
+  mutate(increment=case_when(
+   type=="start"~1,
+   type=="end" ~ -1
+  )) %>%
+  group_by(rideable_type) %>%
+  mutate(riders=cumsum(increment)) %>% filter(mday(t)<=7) %>%
+    ggplot(aes(t,riders,color=rideable_type)) + geom_step() +
+  facet_wrap(~mday(t),scales = "free_x",ncol = 7)
+```
+```{r}
+dfr = dfb %>% 
+  filter(month(started_at)==8,month(ended_at)==8) %>%
+ select(rideable_type,start=started_at,end=ended_at) %>%
+  pivot_longer(start:end, names_to="type",values_to="t") %>% arrange(t) %>%
+  mutate(increment=case_when(
+   type=="start"~1,
+   type=="end" ~ -1
+  )) %>%
+  group_by(rideable_type) %>%
+  mutate(riders=cumsum(increment)) 
+```
+This dataframe looks at the ridership over the month of august using the cumulative sum technique used earlier.
+```{r}
+dfr1 = dfb %>% 
+  filter(month(started_at)==8,month(ended_at)==8) %>%
+ select(start=started_at,end=ended_at) %>%
+  pivot_longer(start:end, names_to="type",values_to="t") %>% arrange(t) %>%
+  mutate(increment=case_when(
+   type=="start"~1,
+   type=="end" ~ -1
+  )) %>%
+  mutate(riders=cumsum(increment)) 
+```
+We try to find the max riders in any hour time interval.
+```{r}
+dfrh = dfr1 %>% group_by(hour(t)) %>% summarise(average_riders = mean(riders))
+```
+We summarize the data to look at ridership with relation to week day, focusing on hour intervals for each of the days.
+```{r}
+dfr1 %>% group_by(hour(t),wday(t,label = TRUE)) %>%summarise(max_riders = max(riders),average_riders = mean(riders))
+```
+
+Challenge Problem:
+usage at any particular station
+start from a particular location
+
