@@ -1,0 +1,73 @@
+---
+title: "Class Enrollment Data:MA132"
+author: "Joe Tudor"
+date: "21 Sep 2020"
+output: html_notebook
+---
+
+THe intention of this analysis is to try to predict next semester's enrollment(spring 2021) for MA132.
+
+
+Prepare workspace:
+
+## Load packages
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(skimr)
+library(summarytools)
+```
+
+## Read and clean the data
+
+```{r}
+dfa= read_excel("CU_ACAD_DEPT_ENRL.xlsx") %>%
+clean_names()
+```
+
+```{r}
+skim(dfa)
+```
+
+### Tidy Data
+
+lets seperate column Term2 into two variables
+```{r}
+dfb = dfa %>% separate(col=term2,into=c("semester","year"), sep=" ")
+```
+
+### Clean and subset the data
+we get rid of the following variables:
+
+* acad_org
+* current_status
+* instructor
+* course_id
+
+Filtering to only include:
+
+* Math courses
+* Lectures
+
+We remove duplicate rows using distinct()
+```{r}
+dfc = dfb %>% select(-acad_org,-current_status,-instructor,-course_id) %>% filter(subject=="MA") %>% filter(catalog%in% c("131","132"), semester %in% c("Fall","Spring")) %>% filter(component=="LEC") %>% distinct()
+
+```
+
+### Summarising the data
+Group by:
+
+* class
+* semester
+* year
+
+Sum up enrollment across many sections by summarizing by sum()
+
+
+```{r}
+dfd = dfc %>% group_by(title,semester,year) %>% summarise(total_enrolment_amt =sum(tot_enrl))
+```
+
