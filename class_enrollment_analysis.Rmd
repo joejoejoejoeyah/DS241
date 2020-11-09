@@ -5,6 +5,8 @@ date: "18 Sep 2020"
 output: html_notebook
 ---
 
+Notebook Created for the purpose of learning different tools for analysis in R whilst looking for relations in the class enrollment data at Clarkson University. 
+
 Prepare workspace:
 
 ## Load packages
@@ -18,12 +20,13 @@ library(summarytools)
 ```
 
 ## Read the data
-
+Creates first data frame using clean_names() in order to start tidying up the data and making the names more uniform and easy to use in later functions.
 ```{r}
 dfa= read_excel("CU_ACAD_DEPT_ENRL.xlsx") %>%
 clean_names()
 ```
 
+Skimming throught the data set to get a rough look at the data before analysis.
 ```{r}
 skim(dfa)
 ```
@@ -38,7 +41,7 @@ C=dfa %>% group_by(subject) %>% skim()
 dfa %>% dfSummary()
 ```
 
-
+Filtering for just Spring 2019.
 ```{r }
 spring19 <- dfa %>% filter(term2=="Spring 2019") %>% dfSummary() %>% view()
 skim(spring19)
